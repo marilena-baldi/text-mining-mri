@@ -1,0 +1,9 @@
+.idea/
+**/__pycache__/
+
+*.txt
+!src/requirements.txt
+*.json
+*.csv
+
+/src/model/

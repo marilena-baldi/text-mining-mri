@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  sdn-ml-service:
+    build:
+      context: ../
+      dockerfile: ./stack/python/Dockerfile
+      target: ${DOCKER_TARGET:-base}
+
+    volumes:
+      - ../src:/sdn-ml/src/
