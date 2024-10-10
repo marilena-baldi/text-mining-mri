@@ -257,6 +257,8 @@ def train_seq(training_loader, labels_to_ids, weights, learning_rate, num_epochs
     model = cf.model_config['seq_model'].from_pretrained(weights,
                                                          num_labels=len(labels_to_ids),
                                                          return_dict=False)
+    model.config.attention_probs_dropout_prob = cf.attention_probs_dropout_prob
+    model.config.dropout_prob = cf.dropout_prob
     model.to(cf.device)
 
     experiment_name = f"{cf.model_config['name']}_e_{num_epochs}_bs_{batch_size}_lr_{learning_rate}"
@@ -328,8 +330,8 @@ def train_val_seq():
 
 
 def train_test_seq(epochs=cf.seq_epochs, learning_rate=cf.seq_learning_rate,
-                   batch_size=cf.seq_batch_size):
-    """ Do training and testing for Sequece Classification
+                   batch_size=cf.seq_batch_size, do_train:bool = True):
+    """ Do training and testing for Sequence Classification
 
     :param epochs: the number of epochs, defaults to cf.seq_epochs
     :type epochs: int, optionsl
@@ -342,18 +344,18 @@ def train_test_seq(epochs=cf.seq_epochs, learning_rate=cf.seq_learning_rate,
     tokenizer = get_tokenizer()
 
     seq_weights = get_mlm_model(tokenizer=tokenizer)
-
     training_loader, validation_loader, testing_loader, labels_to_ids = seq_processing.process_data(
-        dataset_dir=cf.seq_data_dir,
-        tokenizer=tokenizer,
-        batch_size=batch_size)
+            dataset_dir=cf.seq_data_dir,
+            tokenizer=tokenizer,
+            batch_size=batch_size)
 
-    train_val_loader = DataLoader(
-        ConcatDataset([training_loader.dataset, validation_loader.dataset]),
-        shuffle=True,
-        batch_size=training_loader.batch_size)
+    if (do_train):
+        train_val_loader = DataLoader(
+            ConcatDataset([training_loader.dataset, validation_loader.dataset]),
+            shuffle=True,
+            batch_size=training_loader.batch_size)
 
-    train_seq(training_loader=train_val_loader,
+        train_seq(training_loader=train_val_loader,
               labels_to_ids=labels_to_ids,
               weights=seq_weights,
               num_epochs=epochs,
@@ -447,7 +449,7 @@ if __name__ == '__main__':
 
     # after validation, set the best hyperparameters values in the config.py
     train_test_ner()
-    train_test_seq()
+    train_test_seq(do_traine=True)
 
     # test_report_path = os.path.join(cf.tok_data_dir, "report_2088_1659029.txt")
     # with open(test_report_path, 'r', encoding='utf-8') as report_file:

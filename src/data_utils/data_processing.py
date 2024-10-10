@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import re
 import string
+import numpy as np
 
 from src import config as cf
 
@@ -9,6 +10,7 @@ reports = ["data_user1_2017.csv", "data_user2_2017.csv", "data_user3_2017.csv"]
 report_csv_paths = [os.path.join(cf.data_dir, report) for report in reports]
 reports_txt_dir = cf.tok_data_dir
 ner_csv_out_dir = cf.data_dir
+seq_csv_out_dir = cf.seq_data_dir
 
 COLUMN_USER_ID = "IdUtente"
 COLUMN_TEXT_ID = "IdTesto"
@@ -79,7 +81,7 @@ def extract_reports(csv_db_path, txt_dir):
     :type txt_dir: str
     """
 
-    df = pd.read_csv(csv_db_path, skipinitialspace=True, header=0)
+    df = pd.read_csv(csv_db_path, skipinitialspace=True, header=0, encoding='unicode_escape')
 
     for index, row in df.iterrows():
         user_id = row[COLUMN_USER_ID]
@@ -101,7 +103,7 @@ def get_annotation_file(csv_db_path, csv_out_dir):
     :type csv_out_dir: str
     """
 
-    df = pd.read_csv(csv_db_path, skipinitialspace=True, header=0)
+    df = pd.read_csv(csv_db_path, skipinitialspace=True, header=0, encoding='unicode_escape')
 
     i, user_id = 0, 0
     grade = "I"
@@ -141,7 +143,67 @@ def get_annotation_file(csv_db_path, csv_out_dir):
     csv_out_path = os.path.join(csv_out_dir, f'dataset_{user_id}.csv')
     df.to_csv(csv_out_path, index=False)
 
+def split_annotation_file(csv_db_path,tag_path):
+    """
+    Split annpotations by column (Tag for ner
 
+    """
+
+    df = pd.read_csv(csv_db_path, skipinitialspace=True, header=0, encoding='utf-8')
+    data_cols = list(df.columns)
+    for t in tag_path:
+        data_cols.remove(t)
+    for t in tag_path:
+        data_cols.append(t)
+        df.filter(items=data_cols).to_csv(os.path.join(tag_path[t],os.path.split(csv_db_path)[1]),index=False)
+        df['ReportId'] = df['ReportId'].astype('Int64')
+        df['UserId'] = df['UserId'].astype('Int64')
+        data_cols.remove(t)
+
+
+def read_seq_csv(csv_path):
+    df = pd.read_csv(csv_path, skipinitialspace=True, header=0, encoding='utf-8', keep_default_na=False)
+    return df
+
+def save_seq_csv(df,csv_path):
+    df['ReportId'] = df['ReportId'].astype('Int64')
+    df['UserId'] = df['UserId'].astype('Int64')
+    df.to_csv(csv_path, index=False)
+
+
+def perform_checks(csvs):
+    """
+    do some controls and transformation on csvs
+
+    """
+    bpath= 'C:\\progetti\\sdn\\src\\data\\seq\\'
+    for csv in csvs:
+        # control nan rows on UserId NOT NULL - CHECK LABELLING
+
+        csv_path = bpath + csv
+        df = read_seq_csv(csv_path)
+        uniqueCls=df.Cls.unique()
+        labels_to_ids = {}
+        labels_to_ids.update({k: v for v, k in enumerate(uniqueCls)})
+        nans = df.loc[df['UserId'].notnull() & df['Cls'].isna()].any(axis=1)
+        print(csv +' : '+str(nans.sum()))
+        print(labels_to_ids)
+        if nans.sum()>0:
+            print(df[df['UserId'].notnull() & df['Cls'].isna()].head(10))
+        for index, row in df.iterrows():
+            if row['UserId']=='':
+                continue
+            if row['Cls'] not in ['NA','I','II','III','IV']:
+                print('wrong Cls line at '+str(index))
+
+    csvs = ['user1.csv', 'user2.csv', 'user3.csv']
+
+    for csv in csvs:
+        csv_path = bpath + csv
+        df = read_seq_csv(csv_path)
+        mask = (df['UserId'].notnull() & df['Cls'].isna())
+        df.loc[mask,'Cls']='NA'
+        save_seq_csv(df,csv_path)
 if __name__ == '__main__':
     if not os.path.exists(cf.tok_data_dir):
         os.makedirs(cf.tok_data_dir)
@@ -149,6 +211,10 @@ if __name__ == '__main__':
     if not os.path.exists(cf.ner_data_dir):
         os.makedirs(cf.ner_data_dir)
 
+    tag_path={}
+    tag_path['Tag'] = ner_csv_out_dir + "\\ner"
+    tag_path['Cls'] = seq_csv_out_dir
     for report_csv_path in report_csv_paths:
-        extract_reports(csv_db_path=report_csv_path, txt_dir=reports_txt_dir)
-        # get_annotation_file(csv_db_path=report_csv_path, csv_out_dir=ner_csv_out_dir)
+        # extract_reports(csv_db_path=report_csv_path, txt_dir=reports_txt_dir)
+        get_annotation_file(csv_db_path=report_csv_path, csv_out_dir=ner_csv_out_dir)
+        #split_annotation_file(csv_db_path=report_csv_path,tag_path=tag_path)

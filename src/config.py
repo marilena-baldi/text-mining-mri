@@ -82,6 +82,9 @@ seq_hyperparameters = {
     "learning_rates": [1e-3, 1e-4, 1e-5]
 }
 
+# balanced classes threshold
+imbalance_threshold = 25.0
+
 # -------------------------------- PATHS --------------------------------
 
 bert_pretrained_weights_ita = 'dbmdz/bert-base-italian-uncased'
